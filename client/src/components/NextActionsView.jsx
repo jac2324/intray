@@ -64,7 +64,7 @@ export default function NextActionsView({ actions, projects, contexts, onComplet
           when empty made the feature impossible to discover. */}
       <div style={{ marginTop: 20 }}>
         <button className="btn btn-ghost btn-sm" onClick={() => setShowHistory((s) => !s)}>
-          {showHistory ? <ChevronDown size={13} /> : <ChevronRight size={13} />} History ({history.length})
+          {showHistory ? <ChevronDown size={13} /> : <ChevronRight size={13} />} Recently completed ({history.length})
         </button>
         {showHistory && (
           history.length === 0 ? (
