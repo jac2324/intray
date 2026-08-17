@@ -9,6 +9,16 @@ compatibility contract.
 
 ## [Unreleased]
 
+### Added
+- Editing project name/outcome, and action text/context/project, in place —
+  previously these could only be set at creation time.
+- A full completed-items **History** section on the Next Actions view
+  (replacing the old 10-item "recently completed" list): uncapped, sorted
+  newest-first, shows each item's completion date and project, still
+  collapsible with per-item Undo.
+- Actions inside an expanded project card can now be completed, edited, and
+  deleted directly, not just added.
+
 ## [1.0.0] - 2026-08-17
 
 Initial release — full-stack rebuild of the `intray-gtd.jsx` browser-storage
