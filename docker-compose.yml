@@ -1,0 +1,20 @@
+services:
+  intray:
+    build: .
+    container_name: intray
+    restart: unless-stopped
+    ports:
+      # Host port is configurable via PORT in .env; container always listens
+      # on the same value internally.
+      - "${PORT:-3000}:${PORT:-3000}"
+    volumes:
+      # Bind-mounts ./data on the host to /data in the container, so the
+      # encrypted SQLite file survives image rebuilds and container restarts.
+      - ./data:/data
+    env_file:
+      - .env
+    environment:
+      # Always /data inside the container, regardless of what DATA_DIR is
+      # set to in .env (that value is for the plain-Node dev flow).
+      - DATA_DIR=/data
+      - PORT=${PORT:-3000}
