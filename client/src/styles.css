@@ -119,49 +119,18 @@ body {
 .capture-btn-label { display: none; }
 @media (min-width: 480px) { .capture-btn-label { display: inline; } }
 
-/* Tab nav: fixed bottom bar on phone widths, normal top row from tablet up. */
+/* Tab nav: fixed bottom bar on phone widths, normal top row from tablet up.
+   IMPORTANT: the base (always-on) rules below must come BEFORE the
+   responsive @media overrides further down. CSS resolves ties between
+   equal-specificity rules by source order, media query or not — an
+   override declared earlier in the file loses to a plain rule declared
+   later, even when the override's condition matches. Keeping base rules
+   first is what lets the mobile overrides actually take effect. (This bit
+   us once already: font-size/padding overrides silently lost to the base
+   rule below because they used to be declared above it.) */
 .tab-nav {
   display: flex;
   gap: 2px;
-}
-@media (max-width: 767px) {
-  .tab-nav {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 30;
-    background: var(--paper-raised);
-    border-top: 1px solid var(--line);
-    padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
-    justify-content: space-around;
-    overflow-x: auto;
-  }
-  .tab-btn { flex-direction: column; gap: 2px; padding: 6px 4px; font-size: 10px; flex: 1; min-width: 0; }
-  /* The base rule below centers flex children, which leaves this span
-     unconstrained — sized to its own text instead of the button's actual
-     width — so overflow:hidden/ellipsis had nothing to clip against and
-     long labels ("Next Actions", "Waiting For") visually spilled into the
-     next tab. Stretching it to the full button width fixes that. */
-  .tab-btn span.tab-label {
-    display: block;
-    width: 100%;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    text-align: center;
-  }
-  .tab-btn { border-bottom: none; border-top: 2px solid transparent; }
-  .tab-btn.active { border-top-color: var(--indigo); border-bottom-color: transparent; }
-}
-@media (min-width: 768px) {
-  .tab-nav {
-    max-width: 760px;
-    margin: 18px auto 0;
-    padding: 0 16px;
-    border-bottom: 1px solid var(--line);
-    overflow-x: auto;
-  }
 }
 
 .tab-btn {
@@ -191,6 +160,59 @@ body {
 }
 .tab-badge.pulse { animation: pulseTray 0.5s ease; }
 .tab-badge.due { background: var(--rust-soft); color: var(--rust); }
+
+@media (max-width: 767px) {
+  .tab-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    background: var(--paper-raised);
+    border-top: 1px solid var(--line);
+    padding: 4px 2px calc(4px + env(safe-area-inset-bottom));
+    justify-content: space-around;
+    overflow-x: auto;
+  }
+  .tab-btn {
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 1px;
+    font-size: 8.5px;
+    flex: 1;
+    min-width: 0;
+    border-bottom: none;
+    border-top: 2px solid transparent;
+  }
+  .tab-btn.active { border-top-color: var(--indigo); border-bottom-color: transparent; }
+  /* The base rule above centers flex children, which leaves this span
+     unconstrained — sized to its own text instead of the button's actual
+     width — so it could render past its button's bounds and visually
+     overlap the neighboring tab. Stretching it to the full button width
+     fixes that. Two-word labels ("Next Actions", "Waiting For") wrap to a
+     second line at the natural word boundary rather than truncating —
+     full words stay readable, the bar is just a little taller.
+     overflow-wrap:break-word is a safety net for extremely narrow screens
+     only; at normal phone widths every label fits without it kicking in. */
+  .tab-btn span.tab-label {
+    display: block;
+    width: 100%;
+    white-space: normal;
+    line-height: 1.15;
+    text-align: center;
+    overflow-wrap: break-word;
+  }
+}
+@media (min-width: 768px) {
+  .tab-nav {
+    max-width: 760px;
+    margin: 18px auto 0;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--line);
+    overflow-x: auto;
+  }
+}
 
 @keyframes pulseTray {
   0% { transform: scale(1); }
