@@ -138,7 +138,19 @@ body {
     overflow-x: auto;
   }
   .tab-btn { flex-direction: column; gap: 2px; padding: 6px 4px; font-size: 10px; flex: 1; min-width: 0; }
-  .tab-btn span.tab-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* The base rule below centers flex children, which leaves this span
+     unconstrained — sized to its own text instead of the button's actual
+     width — so overflow:hidden/ellipsis had nothing to clip against and
+     long labels ("Next Actions", "Waiting For") visually spilled into the
+     next tab. Stretching it to the full button width fixes that. */
+  .tab-btn span.tab-label {
+    display: block;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+  }
   .tab-btn { border-bottom: none; border-top: 2px solid transparent; }
   .tab-btn.active { border-top-color: var(--indigo); border-bottom-color: transparent; }
 }
