@@ -1,5 +1,7 @@
 # Intray
 
+[![Docker build](https://github.com/jac2324/intray/actions/workflows/docker-build.yml/badge.svg)](https://github.com/jac2324/intray/actions/workflows/docker-build.yml)
+
 A self-hosted, single-user implementation of David Allen's *Getting Things
 Done* (GTD) methodology — Inbox, clarify flow, Next Actions, Projects,
 Waiting For, Someday/Maybe, and a Weekly Review, all backed by your own
@@ -51,6 +53,13 @@ container restarts, and image rebuilds.
 To stop it: `docker compose down` (this does **not** delete `./data`).
 To upgrade: pull/rebuild the image and `docker compose up -d --build` — your
 data directory is untouched.
+
+A [GitHub Actions workflow](.github/workflows/docker-build.yml) builds the
+image on every push and publishes it to GHCR from `main`, so you can also
+skip the local build and pull directly:
+`docker pull ghcr.io/jac2324/intray:latest` — point `docker-compose.yml`'s
+`build: .` at `image: ghcr.io/jac2324/intray:latest` instead if you'd rather
+not build locally at all.
 
 <br>
 
