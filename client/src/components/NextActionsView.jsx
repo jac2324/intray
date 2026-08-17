@@ -60,23 +60,31 @@ export default function NextActionsView({ actions, projects, contexts, onComplet
         ))
       )}
 
-      {history.length > 0 && (
-        <div style={{ marginTop: 20 }}>
-          <button className="btn btn-ghost btn-sm" onClick={() => setShowHistory((s) => !s)}>
-            {showHistory ? <ChevronDown size={13} /> : <ChevronRight size={13} />} History ({history.length})
-          </button>
-          {showHistory && history.map((a) => (
-            <div key={a.id} className="card row" style={{ justifyContent: 'space-between', opacity: 0.7, marginTop: 8 }}>
-              <div>
-                <span style={{ textDecoration: 'line-through' }}>{a.text}</span>
-                {a.projectId && <span className="chip project" style={{ marginLeft: 8 }}>{projectName(a.projectId)}</span>}
-                <div style={{ fontSize: 11, color: 'var(--ink-faint)', marginTop: 2 }}>Completed {fmtDate(a.completedAt)}</div>
-              </div>
-              <button className="btn btn-ghost btn-sm" onClick={() => onUndo(a.id)}>Undo</button>
+      {/* Always visible, even with nothing in it yet — hiding this entirely
+          when empty made the feature impossible to discover. */}
+      <div style={{ marginTop: 20 }}>
+        <button className="btn btn-ghost btn-sm" onClick={() => setShowHistory((s) => !s)}>
+          {showHistory ? <ChevronDown size={13} /> : <ChevronRight size={13} />} History ({history.length})
+        </button>
+        {showHistory && (
+          history.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 8, padding: '4px 2px' }}>
+              Nothing completed yet — items you check off will show up here.
             </div>
-          ))}
-        </div>
-      )}
+          ) : (
+            history.map((a) => (
+              <div key={a.id} className="card row" style={{ justifyContent: 'space-between', opacity: 0.7, marginTop: 8 }}>
+                <div>
+                  <span style={{ textDecoration: 'line-through' }}>{a.text}</span>
+                  {a.projectId && <span className="chip project" style={{ marginLeft: 8 }}>{projectName(a.projectId)}</span>}
+                  <div style={{ fontSize: 11, color: 'var(--ink-faint)', marginTop: 2 }}>Completed {fmtDate(a.completedAt)}</div>
+                </div>
+                <button className="btn btn-ghost btn-sm" onClick={() => onUndo(a.id)}>Undo</button>
+              </div>
+            ))
+          )
+        )}
+      </div>
     </div>
   );
 }
