@@ -19,6 +19,8 @@ function mapAction(row) {
     status: row.status,
     createdAt: row.created_at,
     completedAt: row.completed_at,
+    parentActionId: row.parent_action_id,
+    notes: row.notes || '',
   };
 }
 

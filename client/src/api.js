@@ -47,8 +47,8 @@ export const api = {
     request(`/inbox/${id}/process`, { method: 'POST', body: json({ resolution }) }),
 
   // --- actions (next actions) ---
-  addAction: ({ text, context, projectId }) =>
-    request('/actions', { method: 'POST', body: json({ text, context, projectId }) }),
+  addAction: ({ text, context, projectId, parentActionId, notes }) =>
+    request('/actions', { method: 'POST', body: json({ text, context, projectId, parentActionId, notes }) }),
   updateAction: (id, patch) => request(`/actions/${id}`, { method: 'PATCH', body: json(patch) }),
   deleteAction: (id) => request(`/actions/${id}`, { method: 'DELETE' }),
 

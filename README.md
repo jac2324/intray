@@ -316,15 +316,25 @@ A few calls made while building this, in case any surprise you:
 - **The capture bar's "instant" feel is optimistic UI**: the item appears in
   the Inbox immediately on submit, before the server confirms it; if the
   request fails, it's quietly removed and an error toast appears.
-- **Sessions are stateless, signed cookies** with a secret generated fresh
-  on every server start (kept only in memory). A server restart logs you
-  out; you log back in with `AUTH_PASSWORD`. This avoids persisting yet
-  another secret to disk for a single-user app.
+- **Sessions are stateless, signed cookies**, with the signing secret
+  persisted to `data/.session-secret` (generated once on first boot, reused
+  after that) — logging in survives container restarts and redeploys, not
+  just page reloads. Sessions last 180 days from last use. Delete that file
+  to force every device to log in again.
 - **The container runs as root** inside Docker for simplicity with bind-mount
   permissions across different host/NAS setups (a common trade-off for small
   self-hosted single-purpose containers). If you'd prefer a non-root user,
   add a `USER` directive to the `Dockerfile` and make sure the mounted
   `./data` directory is writable by that UID.
+- **Next Actions can nest sub-actions**, arbitrarily deep — a deliberate
+  departure from strict GTD (where a "next action" is supposed to already be
+  a single atomic step). A sub-action is just another action whose
+  `parentActionId` points at its parent: it gets its own context (which can
+  differ from its parent's) but always inherits its parent's project, and
+  nothing about parent/child completion cascades automatically in either
+  direction. Deleting an action deletes its whole subtree — the UI warns
+  first if it has any descendants. Actions also carry an optional free-text
+  `notes` field, edited alongside everything else in the same edit form.
 
 <br>
 

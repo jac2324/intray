@@ -24,14 +24,25 @@ CREATE TABLE IF NOT EXISTS inbox_items (
 );
 
 CREATE TABLE IF NOT EXISTS actions (
-  id           INTEGER PRIMARY KEY AUTOINCREMENT,
-  text         TEXT NOT NULL,
-  context      TEXT,
-  project_id   INTEGER REFERENCES projects(id) ON DELETE SET NULL,
-  status       TEXT NOT NULL DEFAULT 'next', -- next | done
-  created_at   INTEGER NOT NULL,
-  completed_at INTEGER
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  text             TEXT NOT NULL,
+  context          TEXT,
+  project_id       INTEGER REFERENCES projects(id) ON DELETE SET NULL,
+  status           TEXT NOT NULL DEFAULT 'next', -- next | done
+  created_at       INTEGER NOT NULL,
+  completed_at     INTEGER,
+  -- Self-referencing: a sub-action is just an action whose parent is
+  -- another action. Arbitrary nesting depth falls out of this for free —
+  -- no separate table needed. Deleting a parent deletes its whole subtree.
+  parent_action_id INTEGER REFERENCES actions(id) ON DELETE CASCADE,
+  notes            TEXT NOT NULL DEFAULT ''
 );
+
+-- NOTE: the idx_actions_parent index is created in db.js's migration step,
+-- not here. On an existing database, CREATE TABLE IF NOT EXISTS above is a
+-- no-op (the table already exists without parent_action_id), so an index
+-- statement referencing that column here would fail immediately, before
+-- the migration ever gets a chance to ALTER it in.
 
 CREATE TABLE IF NOT EXISTS waiting_items (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,

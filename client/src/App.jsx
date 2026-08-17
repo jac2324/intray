@@ -10,6 +10,7 @@ import SomedayView from './components/SomedayView.jsx';
 import ReviewView from './components/ReviewView.jsx';
 import LoginScreen from './components/LoginScreen.jsx';
 import { LoadingScreen, ErrorToast } from './components/Shared.jsx';
+import { getAncestorChain } from './utils/actionTree.js';
 
 const REVIEW_DUE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -50,6 +51,16 @@ export default function App() {
     stalled: stalledCount,
   };
 
+  // Candidates for "attach this inbox item to an existing action" — every
+  // open action at any depth, labeled with its full nesting path so it's
+  // clear what you're attaching to.
+  const openActionOptions = data.actions
+    .filter((a) => a.status === 'next')
+    .map((a) => ({
+      id: a.id,
+      label: [...getAncestorChain(data.actions, a), a].map((x) => x.text).join(' › '),
+    }));
+
   return (
     <div className="gtd-app">
       <header className="gtd-header">
@@ -73,6 +84,7 @@ export default function App() {
             inbox={data.inbox}
             contexts={data.contexts}
             projects={data.projects}
+            openActionOptions={openActionOptions}
             onResolve={(item, resolution) => gtd.processInboxItem(item.id, resolution)}
             onAddContext={gtd.addContext}
           />
@@ -87,6 +99,7 @@ export default function App() {
             onDelete={gtd.deleteAction}
             onEdit={gtd.editAction}
             onAdd={(text, context, projectId) => gtd.addAction({ text, context, projectId })}
+            onAddSubAction={(parentActionId, text, context) => gtd.addAction({ text, context, parentActionId })}
             onAddContext={gtd.addContext}
           />
         )}
@@ -102,6 +115,7 @@ export default function App() {
             onDeleteAction={gtd.deleteAction}
             onEditAction={gtd.editAction}
             onAddAction={(projectId, text, context) => gtd.addAction({ text, context, projectId })}
+            onAddSubAction={(parentActionId, text, context) => gtd.addAction({ text, context, parentActionId })}
             onAddContext={gtd.addContext}
           />
         )}

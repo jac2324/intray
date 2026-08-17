@@ -59,6 +59,19 @@ module.exports = function inboxRouter(db) {
         case 'action': {
           const text = (resolution.text || item.text || '').trim();
           if (!text) throw Object.assign(new Error('text is required'), { status: 400 });
+
+          // Attaching to an existing action as a sub-step takes priority
+          // over the project fields — project is always inherited from
+          // the parent in that case, same rule as POST /api/actions.
+          if (resolution.parentActionId) {
+            const parent = db.prepare('SELECT * FROM actions WHERE id = ?').get(resolution.parentActionId);
+            if (!parent) throw Object.assign(new Error('parent action not found'), { status: 404 });
+            db.prepare(
+              'INSERT INTO actions (text, context, project_id, status, created_at, parent_action_id) VALUES (?, ?, ?, ?, ?, ?)'
+            ).run(text, resolution.context || null, parent.project_id, 'next', now, parent.id);
+            break;
+          }
+
           let projectId = resolution.projectId || null;
           const newProjectName = (resolution.newProjectName || '').trim();
           if (newProjectName) {

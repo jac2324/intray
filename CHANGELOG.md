@@ -12,12 +12,41 @@ compatibility contract.
 ### Added
 - Editing project name/outcome, and action text/context/project, in place —
   previously these could only be set at creation time.
-- A full completed-items **History** section on the Next Actions view
-  (replacing the old 10-item "recently completed" list): uncapped, sorted
-  newest-first, shows each item's completion date and project, still
-  collapsible with per-item Undo.
+- "Recently completed" on the Next Actions view is now uncapped (previously
+  the last 10 only), sorted newest-first, and shows each item's completion
+  date and project — still collapsible, still with per-item Undo.
 - Actions inside an expanded project card can now be completed, edited, and
   deleted directly, not just added.
+- **Nested sub-actions**, arbitrarily deep: expand any Next Action to add,
+  complete, edit, or delete smaller steps underneath it. A sub-action has
+  its own context (independent of its parent's) but always inherits its
+  parent's project; deleting a parent warns before cascading to its whole
+  subtree. Reachable from the Next Actions list, from within a project
+  card, and — via a new "attach to an existing action" picker in the
+  clarify flow's final step — directly from Inbox processing, without
+  adding a new question to that flow.
+  Completed sub-actions move to "Recently completed" like anything else,
+  grouped under their parent's full breadcrumb path (e.g.
+  "Renovate Bathroom › Get quotes") even if that parent isn't done yet.
+- A free-text **notes** field on any action (top-level or nested), edited
+  in the same form as text/context/project; a small indicator shows when
+  an action has notes without needing to open edit mode.
+- `NEW_USER_SETUP.md`: a condensed walkthrough for someone else standing up
+  their own separate instance, linked from the top of the README.
+
+### Fixed
+- Sessions were invalidated by any server restart (container recreate,
+  redeploy, host reboot) because the signing secret was regenerated in
+  memory each boot. It's now persisted to `data/.session-secret` and
+  session length extended to 180 days — logging in once is enough.
+- Mobile bottom tab-bar labels ("Next Actions", "Waiting For", etc.) could
+  visually overlap the neighboring tab. Root cause was a CSS source-order
+  bug: the `@media (max-width: 767px)` overrides for `.tab-btn` were
+  declared *before* the always-on base rule, so the base rule's
+  `font-size`/`padding` were silently winning at every width, leaving far
+  less room than intended. Reordered the stylesheet so the responsive
+  overrides actually apply; all six labels now render in full on one line
+  with no truncation, wrapping, or overlap.
 
 ## [1.0.0] - 2026-08-17
 

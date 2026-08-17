@@ -8,12 +8,13 @@ import { EmptyState } from './Shared.jsx';
 //               -> yes: <2min? -> yes: do it now
 //                               -> no: yours to do? -> delegate -> waiting for
 //                                                    -> keep -> next action
-function InboxItem({ item, contexts, projects, onResolve, onAddContext }) {
+function InboxItem({ item, contexts, projects, openActionOptions, onResolve, onAddContext }) {
   const [step, setStep] = useState('closed');
   const [text, setText] = useState(item.text);
   const [context, setContext] = useState(contexts[0] || '');
   const [projectChoice, setProjectChoice] = useState('');
   const [newProjectName, setNewProjectName] = useState('');
+  const [parentChoice, setParentChoice] = useState('');
   const [who, setWho] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -37,6 +38,12 @@ function InboxItem({ item, contexts, projects, onResolve, onAddContext }) {
   };
   const finishAction = () => {
     if (!text.trim()) return;
+    if (parentChoice) {
+      // Attaching to an existing action as a sub-step — project is
+      // inherited from that parent, so no project fields are sent.
+      resolve({ type: 'action', text: text.trim(), context, parentActionId: Number(parentChoice) });
+      return;
+    }
     resolve({
       type: 'action',
       text: text.trim(),
@@ -125,17 +132,37 @@ function InboxItem({ item, contexts, projects, onResolve, onAddContext }) {
           <input className="text-input" style={{ width: '100%', marginBottom: 10 }} value={text} onChange={(e) => setText(e.target.value)} />
           <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 6 }}>Context</div>
           <ContextPicker contexts={contexts} value={context} onChange={setContext} onAddContext={onAddContext} />
-          <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 6 }}>Project (optional)</div>
-          <select className="text-input" style={{ width: '100%', marginBottom: 10 }} value={projectChoice} onChange={(e) => setProjectChoice(e.target.value)}>
-            <option value="">No project</option>
-            {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            <option value="new">+ New project…</option>
-          </select>
-          {projectChoice === 'new' && (
-            <input className="text-input" style={{ width: '100%', marginBottom: 10 }} value={newProjectName} onChange={(e) => setNewProjectName(e.target.value)} placeholder="Project name" />
+          {openActionOptions.length > 0 && (
+            <>
+              <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 6 }}>Attach to an existing action (optional)</div>
+              <select className="text-input" style={{ width: '100%', marginBottom: 10 }} value={parentChoice} onChange={(e) => setParentChoice(e.target.value)}>
+                <option value="">— Top-level action —</option>
+                {openActionOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+              </select>
+            </>
+          )}
+          {!parentChoice && (
+            <>
+              <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 6 }}>Project (optional)</div>
+              <select className="text-input" style={{ width: '100%', marginBottom: 10 }} value={projectChoice} onChange={(e) => setProjectChoice(e.target.value)}>
+                <option value="">No project</option>
+                {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                <option value="new">+ New project…</option>
+              </select>
+              {projectChoice === 'new' && (
+                <input className="text-input" style={{ width: '100%', marginBottom: 10 }} value={newProjectName} onChange={(e) => setNewProjectName(e.target.value)} placeholder="Project name" />
+              )}
+            </>
+          )}
+          {parentChoice && (
+            <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 10 }}>
+              Project is inherited from the parent action.
+            </div>
           )}
           <div className="clarify-actions">
-            <button className="btn btn-primary btn-sm" disabled={busy || !text.trim()} onClick={finishAction}>Add Next Action</button>
+            <button className="btn btn-primary btn-sm" disabled={busy || !text.trim()} onClick={finishAction}>
+              {parentChoice ? 'Add as Sub-action' : 'Add Next Action'}
+            </button>
             <button className="btn btn-ghost btn-sm" onClick={reset}>Back</button>
           </div>
         </div>
@@ -144,7 +171,7 @@ function InboxItem({ item, contexts, projects, onResolve, onAddContext }) {
   );
 }
 
-export default function InboxView({ inbox, contexts, projects, onResolve, onAddContext }) {
+export default function InboxView({ inbox, contexts, projects, openActionOptions, onResolve, onAddContext }) {
   if (inbox.length === 0) {
     return (
       <EmptyState icon={Inbox} title="Inbox zero">
@@ -155,7 +182,15 @@ export default function InboxView({ inbox, contexts, projects, onResolve, onAddC
   return (
     <div>
       {inbox.map((item) => (
-        <InboxItem key={item.id} item={item} contexts={contexts} projects={projects} onResolve={onResolve} onAddContext={onAddContext} />
+        <InboxItem
+          key={item.id}
+          item={item}
+          contexts={contexts}
+          projects={projects}
+          openActionOptions={openActionOptions}
+          onResolve={onResolve}
+          onAddContext={onAddContext}
+        />
       ))}
     </div>
   );

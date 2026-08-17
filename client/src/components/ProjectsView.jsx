@@ -25,11 +25,17 @@ function EditProjectForm({ project, onSave, onCancel }) {
   );
 }
 
-function ProjectRow({ project, actions, contexts, onCompleteProject, onEditProject, onCompleteAction, onDeleteAction, onEditAction, onAddAction, onAddContext }) {
+function ProjectRow({ project, actions, contexts, onCompleteProject, onEditProject, onCompleteAction, onDeleteAction, onEditAction, onAddAction, onAddSubAction, onAddContext }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
-  const projectActions = actions.filter((a) => a.projectId === project.id && a.status === 'next');
-  const stalled = projectActions.length === 0;
+  // The visible list is root actions only — sub-actions show up by
+  // expanding one of these, not as their own rows here. But "stalled"
+  // means genuinely nothing to do, at any depth: a project whose root
+  // action is done but still has an open sub-action underneath it isn't
+  // stalled, since there's still a real next physical step.
+  const projectActions = actions.filter((a) => a.projectId === project.id && a.status === 'next' && a.parentActionId == null);
+  const hasAnyOpenAction = actions.some((a) => a.projectId === project.id && a.status === 'next');
+  const stalled = !hasAnyOpenAction;
 
   return (
     <div className="card project-card">
@@ -58,16 +64,19 @@ function ProjectRow({ project, actions, contexts, onCompleteProject, onEditProje
           ) : (
             <>
               {projectActions.map((a) => (
-                <ActionRow
-                  key={a.id}
-                  action={a}
-                  contexts={contexts}
-                  hideProjectPicker
-                  onComplete={onCompleteAction}
-                  onDelete={onDeleteAction}
-                  onEdit={onEditAction}
-                  onAddContext={onAddContext}
-                />
+                <div key={a.id} style={{ marginBottom: 6 }}>
+                  <ActionRow
+                    action={a}
+                    allActions={actions}
+                    contexts={contexts}
+                    hideProjectPicker
+                    onComplete={onCompleteAction}
+                    onDelete={onDeleteAction}
+                    onEdit={onEditAction}
+                    onAddSubAction={onAddSubAction}
+                    onAddContext={onAddContext}
+                  />
+                </div>
               ))}
               <div style={{ marginTop: projectActions.length ? 8 : 0 }}>
                 <AddActionForm
@@ -118,7 +127,7 @@ function NewProjectForm({ onAdd }) {
   );
 }
 
-export default function ProjectsView({ projects, actions, contexts, onAdd, onCompleteProject, onEditProject, onCompleteAction, onDeleteAction, onEditAction, onAddAction, onAddContext }) {
+export default function ProjectsView({ projects, actions, contexts, onAdd, onCompleteProject, onEditProject, onCompleteAction, onDeleteAction, onEditAction, onAddAction, onAddSubAction, onAddContext }) {
   const active = projects.filter((p) => p.status === 'active');
   return (
     <div>
@@ -140,6 +149,7 @@ export default function ProjectsView({ projects, actions, contexts, onAdd, onCom
             onDeleteAction={onDeleteAction}
             onEditAction={onEditAction}
             onAddAction={onAddAction}
+            onAddSubAction={onAddSubAction}
             onAddContext={onAddContext}
           />
         ))
