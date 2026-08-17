@@ -11,6 +11,10 @@ subscription, no third party ever sees your data.
 One process, one port: an Express server serves both the REST API and the
 built React frontend, backed by a single encrypted SQLite file.
 
+> **Setting up your own instance, separate from someone else's?** See
+> [NEW_USER_SETUP.md](NEW_USER_SETUP.md) for the condensed version of the
+> steps below, aimed at "someone showed me this, I want my own."
+
 <br>
 
 ## Contents
