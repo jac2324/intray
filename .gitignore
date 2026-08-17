@@ -2,6 +2,7 @@ node_modules/
 client/dist/
 data/*.db
 data/*.db-*
+data/.session-secret
 .env
 *.log
 .DS_Store

@@ -185,9 +185,13 @@ loads. If you leave it unset, the app has **no authentication at all**.
   exposing it to the wider internet. Never run it on the open internet with
   no password.
 
-The session cookie is signed with a secret generated fresh each time the
-server starts, kept only in memory — restarting the server logs you out, and
-you just log back in with `AUTH_PASSWORD`.
+The session cookie is signed with a secret stored in `data/.session-secret`,
+generated once on first boot and reused after that — so logging in once is
+enough; you won't be asked again just because the container restarted or the
+host rebooted. Sessions last 180 days from last use before they need a fresh
+login. Deleting `data/.session-secret` invalidates all sessions immediately
+(everyone just logs in again) — that's a quick way to force a re-login on
+every device if you ever want one.
 
 <br>
 

@@ -1,12 +1,29 @@
 'use strict';
 
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
-// Session secret is generated fresh every time the process starts and lives
-// only in memory. That means a server restart logs the user out (they just
-// log back in with AUTH_PASSWORD) — a reasonable trade-off for a single-user
-// app, since it avoids persisting yet another secret to disk.
-const SESSION_SECRET = crypto.randomBytes(32).toString('hex');
+// The session-signing secret is persisted next to the database (in the same
+// volume-mounted /data directory), generated once on first boot and reused
+// on every restart after that. Log in once and the session survives
+// container restarts, redeploys, and host reboots — it only ever expires
+// via the cookie's own maxAge (see index.js), not because the server
+// happened to restart. If this file is ever deleted, existing sessions are
+// invalidated and everyone just logs in again with AUTH_PASSWORD — nothing
+// else depends on it, so that's harmless.
+function getOrCreateSessionSecret(dataDir) {
+  const secretPath = path.join(dataDir, '.session-secret');
+  try {
+    const existing = fs.readFileSync(secretPath, 'utf8').trim();
+    if (existing) return existing;
+  } catch {
+    // File doesn't exist yet — fall through and create it.
+  }
+  const secret = crypto.randomBytes(32).toString('hex');
+  fs.writeFileSync(secretPath, secret, { mode: 0o600 });
+  return secret;
+}
 
 function timingSafeEqual(a, b) {
   const bufA = Buffer.from(String(a));
@@ -133,4 +150,4 @@ function createAuthRouter(authPassword) {
   return router;
 }
 
-module.exports = { SESSION_SECRET, createAuthGate, createAuthRouter };
+module.exports = { getOrCreateSessionSecret, createAuthGate, createAuthRouter };

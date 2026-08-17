@@ -7,7 +7,7 @@ const express = require('express');
 const cookieSession = require('cookie-session');
 
 const { openDatabase } = require('./db');
-const { SESSION_SECRET, createAuthGate, createAuthRouter } = require('./auth');
+const { getOrCreateSessionSecret, createAuthGate, createAuthRouter } = require('./auth');
 
 const PORT = Number(process.env.PORT) || 3000;
 const DATA_DIR = path.resolve(process.cwd(), process.env.DATA_DIR || './data');
@@ -28,8 +28,12 @@ app.use(express.json());
 app.use(
   cookieSession({
     name: 'intray.sid',
-    secret: SESSION_SECRET,
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    // Persisted in /data, not regenerated per boot — see auth.js. Combined
+    // with a long maxAge, this means logging in once is enough as long as
+    // you open the app at least occasionally (cookie-session resends the
+    // cookie, with a refreshed expiry, on every response).
+    secret: getOrCreateSessionSecret(DATA_DIR),
+    maxAge: 180 * 24 * 60 * 60 * 1000, // 180 days
     sameSite: 'lax',
     httpOnly: true,
   })
