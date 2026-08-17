@@ -85,6 +85,7 @@ export default function App() {
             onComplete={gtd.completeAction}
             onUndo={gtd.undoAction}
             onDelete={gtd.deleteAction}
+            onEdit={gtd.editAction}
             onAdd={(text, context, projectId) => gtd.addAction({ text, context, projectId })}
             onAddContext={gtd.addContext}
           />
@@ -95,7 +96,11 @@ export default function App() {
             actions={data.actions}
             contexts={data.contexts}
             onAdd={(name, outcome) => gtd.addProject({ name, outcome })}
-            onComplete={gtd.completeProject}
+            onCompleteProject={gtd.completeProject}
+            onEditProject={gtd.editProject}
+            onCompleteAction={gtd.completeAction}
+            onDeleteAction={gtd.deleteAction}
+            onEditAction={gtd.editAction}
             onAddAction={(projectId, text, context) => gtd.addAction({ text, context, projectId })}
             onAddContext={gtd.addContext}
           />

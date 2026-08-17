@@ -1,10 +1,33 @@
 import React, { useState } from 'react';
-import { FolderKanban, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, Plus } from 'lucide-react';
+import { FolderKanban, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, Plus, Pencil } from 'lucide-react';
 import AddActionForm from './AddActionForm.jsx';
+import ActionRow from './ActionRow.jsx';
 import { EmptyState } from './Shared.jsx';
 
-function ProjectRow({ project, actions, contexts, onComplete, onAddAction, onAddContext }) {
+function EditProjectForm({ project, onSave, onCancel }) {
+  const [name, setName] = useState(project.name);
+  const [outcome, setOutcome] = useState(project.outcome || '');
+  const save = () => {
+    if (!name.trim()) return;
+    onSave({ name: name.trim(), outcome: outcome.trim() });
+  };
+  return (
+    <div className="clarify-box" onClick={(e) => e.stopPropagation()}>
+      <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 6 }}>Project name</div>
+      <input className="text-input" style={{ width: '100%', marginBottom: 8 }} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+      <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 6 }}>What does done look like?</div>
+      <input className="text-input" style={{ width: '100%', marginBottom: 10 }} value={outcome} onChange={(e) => setOutcome(e.target.value)} placeholder="(optional)" />
+      <div className="clarify-actions">
+        <button className="btn btn-primary btn-sm" onClick={save}>Save</button>
+        <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function ProjectRow({ project, actions, contexts, onCompleteProject, onEditProject, onCompleteAction, onDeleteAction, onEditAction, onAddAction, onAddContext }) {
   const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
   const projectActions = actions.filter((a) => a.projectId === project.id && a.status === 'next');
   const stalled = projectActions.length === 0;
 
@@ -25,25 +48,46 @@ function ProjectRow({ project, actions, contexts, onComplete, onAddAction, onAdd
         {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
       </div>
       {expanded && (
-        <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
-          {projectActions.map((a) => (
-            <div key={a.id} className="row" style={{ marginBottom: 6 }}>
-              <span className="chip">{a.context}</span>
-              <span style={{ fontSize: 13 }}>{a.text}</span>
-            </div>
-          ))}
-          <div onClick={(e) => e.stopPropagation()}>
-            <AddActionForm
-              contexts={contexts}
-              projects={[]}
-              hideProjectPicker
-              onAddContext={onAddContext}
-              onAdd={(text, context) => onAddAction(project.id, text, context)}
+        <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 12 }} onClick={(e) => e.stopPropagation()}>
+          {editing ? (
+            <EditProjectForm
+              project={project}
+              onSave={(patch) => { onEditProject(project.id, patch); setEditing(false); }}
+              onCancel={() => setEditing(false)}
             />
-          </div>
-          <button className="btn btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={(e) => { e.stopPropagation(); onComplete(project.id); }}>
-            <CheckCircle2 size={13} /> Mark project complete
-          </button>
+          ) : (
+            <>
+              {projectActions.map((a) => (
+                <ActionRow
+                  key={a.id}
+                  action={a}
+                  contexts={contexts}
+                  hideProjectPicker
+                  onComplete={onCompleteAction}
+                  onDelete={onDeleteAction}
+                  onEdit={onEditAction}
+                  onAddContext={onAddContext}
+                />
+              ))}
+              <div style={{ marginTop: projectActions.length ? 8 : 0 }}>
+                <AddActionForm
+                  contexts={contexts}
+                  projects={[]}
+                  hideProjectPicker
+                  onAddContext={onAddContext}
+                  onAdd={(text, context) => onAddAction(project.id, text, context)}
+                />
+              </div>
+              <div className="row" style={{ marginTop: 10, gap: 8 }}>
+                <button className="btn btn-ghost btn-sm" onClick={() => setEditing(true)}>
+                  <Pencil size={13} /> Edit project
+                </button>
+                <button className="btn btn-ghost btn-sm" onClick={() => onCompleteProject(project.id)}>
+                  <CheckCircle2 size={13} /> Mark project complete
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -74,7 +118,7 @@ function NewProjectForm({ onAdd }) {
   );
 }
 
-export default function ProjectsView({ projects, actions, contexts, onAdd, onComplete, onAddAction, onAddContext }) {
+export default function ProjectsView({ projects, actions, contexts, onAdd, onCompleteProject, onEditProject, onCompleteAction, onDeleteAction, onEditAction, onAddAction, onAddContext }) {
   const active = projects.filter((p) => p.status === 'active');
   return (
     <div>
@@ -85,7 +129,19 @@ export default function ProjectsView({ projects, actions, contexts, onAdd, onCom
         <EmptyState icon={FolderKanban} title="No active projects">Add one to break a bigger outcome into next actions.</EmptyState>
       ) : (
         active.map((p) => (
-          <ProjectRow key={p.id} project={p} actions={actions} contexts={contexts} onComplete={onComplete} onAddAction={onAddAction} onAddContext={onAddContext} />
+          <ProjectRow
+            key={p.id}
+            project={p}
+            actions={actions}
+            contexts={contexts}
+            onCompleteProject={onCompleteProject}
+            onEditProject={onEditProject}
+            onCompleteAction={onCompleteAction}
+            onDeleteAction={onDeleteAction}
+            onEditAction={onEditAction}
+            onAddAction={onAddAction}
+            onAddContext={onAddContext}
+          />
         ))
       )}
     </div>

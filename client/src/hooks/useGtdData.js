@@ -118,9 +118,11 @@ export function useGtdData() {
     addAction: (payload) => mutate(() => api.addAction(payload)),
     completeAction: (id) => mutate(() => api.updateAction(id, { status: 'done' })),
     undoAction: (id) => mutate(() => api.updateAction(id, { status: 'next' })),
+    editAction: (id, patch) => mutate(() => api.updateAction(id, patch)),
     deleteAction: (id) => mutate(() => api.deleteAction(id)),
 
     addProject: (payload) => mutate(() => api.addProject(payload)),
+    editProject: (id, patch) => mutate(() => api.updateProject(id, patch)),
     completeProject: (id) => mutate(() => api.completeProject(id)),
 
     addWaiting: (payload) => mutate(() => api.addWaiting(payload)),

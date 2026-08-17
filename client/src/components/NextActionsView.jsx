@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
-import { ListChecks, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { ListChecks, ChevronDown, ChevronRight } from 'lucide-react';
 import AddActionForm from './AddActionForm.jsx';
-import { EmptyState } from './Shared.jsx';
+import ActionRow from './ActionRow.jsx';
+import { EmptyState, fmtDate } from './Shared.jsx';
 
-export default function NextActionsView({ actions, projects, contexts, onComplete, onUndo, onDelete, onAdd, onAddContext }) {
+export default function NextActionsView({ actions, projects, contexts, onComplete, onUndo, onDelete, onEdit, onAdd, onAddContext }) {
   const [projectFilter, setProjectFilter] = useState('');
-  const [showDone, setShowDone] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
-  const next = actions.filter(
-    (a) => a.status === 'next' && (!projectFilter || a.projectId === Number(projectFilter))
-  );
-  const done = actions.filter((a) => a.status === 'done').slice(-10).reverse();
+  const matchesProject = (a) => !projectFilter || a.projectId === Number(projectFilter);
+  const next = actions.filter((a) => a.status === 'next' && matchesProject(a));
+  // Full history, not just the last few — most recently completed first.
+  const history = actions
+    .filter((a) => a.status === 'done' && matchesProject(a))
+    .slice()
+    .sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
 
   const grouped = {};
   next.forEach((a) => {
@@ -40,27 +44,34 @@ export default function NextActionsView({ actions, projects, contexts, onComplet
           <div key={ctx}>
             <div className="section-title">{ctx} <span style={{ opacity: 0.6 }}>· {grouped[ctx].length}</span></div>
             {grouped[ctx].map((a) => (
-              <div key={a.id} className="card row" style={{ justifyContent: 'space-between' }}>
-                <div className="row">
-                  <button className="checkbox-btn" onClick={() => onComplete(a.id)} aria-label="Complete action" />
-                  <span>{a.text}</span>
-                  {a.projectId && <span className="chip project">{projectName(a.projectId)}</span>}
-                </div>
-                <button className="btn btn-ghost btn-sm btn-icon" onClick={() => onDelete(a.id)} aria-label="Delete action"><Trash2 size={13} /></button>
-              </div>
+              <ActionRow
+                key={a.id}
+                action={a}
+                contexts={contexts}
+                projects={projects}
+                projectName={projectName}
+                onComplete={onComplete}
+                onDelete={onDelete}
+                onEdit={onEdit}
+                onAddContext={onAddContext}
+              />
             ))}
           </div>
         ))
       )}
 
-      {done.length > 0 && (
+      {history.length > 0 && (
         <div style={{ marginTop: 20 }}>
-          <button className="btn btn-ghost btn-sm" onClick={() => setShowDone((s) => !s)}>
-            {showDone ? <ChevronDown size={13} /> : <ChevronRight size={13} />} Recently completed ({done.length})
+          <button className="btn btn-ghost btn-sm" onClick={() => setShowHistory((s) => !s)}>
+            {showHistory ? <ChevronDown size={13} /> : <ChevronRight size={13} />} History ({history.length})
           </button>
-          {showDone && done.map((a) => (
-            <div key={a.id} className="card row" style={{ justifyContent: 'space-between', opacity: 0.6, marginTop: 8 }}>
-              <span style={{ textDecoration: 'line-through' }}>{a.text}</span>
+          {showHistory && history.map((a) => (
+            <div key={a.id} className="card row" style={{ justifyContent: 'space-between', opacity: 0.7, marginTop: 8 }}>
+              <div>
+                <span style={{ textDecoration: 'line-through' }}>{a.text}</span>
+                {a.projectId && <span className="chip project" style={{ marginLeft: 8 }}>{projectName(a.projectId)}</span>}
+                <div style={{ fontSize: 11, color: 'var(--ink-faint)', marginTop: 2 }}>Completed {fmtDate(a.completedAt)}</div>
+              </div>
               <button className="btn btn-ghost btn-sm" onClick={() => onUndo(a.id)}>Undo</button>
             </div>
           ))}
