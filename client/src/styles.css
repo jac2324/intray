@@ -288,6 +288,8 @@ body {
   white-space: nowrap;
 }
 .chip.project { background: var(--indigo-soft); color: var(--indigo); }
+.chip.due { display: inline-flex; align-items: center; gap: 3px; background: var(--paper); color: var(--ink-soft); border: 1px solid var(--line); }
+.chip.due.overdue { background: var(--rust-soft); color: var(--rust); border-color: transparent; }
 
 .btn {
   font-family: var(--font-body);

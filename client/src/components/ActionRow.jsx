@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Trash2, Pencil, ChevronDown, ChevronRight, Plus, StickyNote } from 'lucide-react';
+import { Trash2, Pencil, ChevronDown, ChevronRight, Plus, StickyNote, CalendarDays } from 'lucide-react';
 import ContextPicker from './ContextPicker.jsx';
 import { getChildren, countDescendants } from '../utils/actionTree.js';
+import { fmtDueDate, isOverdue } from './Shared.jsx';
 
 const INDENT_PER_LEVEL = 16; // px
 
@@ -68,16 +69,19 @@ export default function ActionRow({
   const [context, setContext] = useState(action.context || contexts[0] || '');
   const [projectId, setProjectId] = useState(action.projectId ? String(action.projectId) : '');
   const [notes, setNotes] = useState(action.notes || '');
+  const [dueDate, setDueDate] = useState(action.dueDate || '');
 
   const children = getChildren(allActions, action.id);
   const openChildren = children.filter((a) => a.status === 'next');
   const hasNotes = !!(action.notes && action.notes.trim());
+  const overdue = action.status === 'next' && isOverdue(action.dueDate);
 
   const startEdit = () => {
     setText(action.text);
     setContext(action.context || contexts[0] || '');
     setProjectId(action.projectId ? String(action.projectId) : '');
     setNotes(action.notes || '');
+    setDueDate(action.dueDate || '');
     setEditing(true);
   };
 
@@ -88,6 +92,7 @@ export default function ActionRow({
       context,
       projectId: hideProjectPicker ? action.projectId : projectId ? Number(projectId) : null,
       notes: notes.trim(),
+      dueDate: dueDate || null,
     });
     setEditing(false);
   };
@@ -125,6 +130,19 @@ export default function ActionRow({
             ))}
           </select>
         )}
+        <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 6 }}>Due date</div>
+        <div className="row" style={{ gap: 8, marginBottom: 10 }}>
+          <input
+            type="date"
+            className="text-input"
+            style={{ flex: 1 }}
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+          />
+          {dueDate && (
+            <button className="btn btn-ghost btn-sm" onClick={() => setDueDate('')}>Clear</button>
+          )}
+        </div>
         <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 6 }}>Notes</div>
         <textarea
           className="text-input"
@@ -156,6 +174,11 @@ export default function ActionRow({
             <button className="checkbox-btn" onClick={() => onComplete(action.id)} aria-label="Complete action" />
             <span>{action.text}</span>
             {hasNotes && <StickyNote size={12} color="var(--amber)" aria-label="Has notes" />}
+            {action.dueDate && (
+              <span className={`chip due${overdue ? ' overdue' : ''}`}>
+                <CalendarDays size={11} /> {fmtDueDate(action.dueDate)}
+              </span>
+            )}
             {hideProjectPicker && action.context && <span className="chip">{action.context}</span>}
             {!hideProjectPicker && action.projectId && <span className="chip project">{projectName(action.projectId)}</span>}
             {openChildren.length > 0 && (

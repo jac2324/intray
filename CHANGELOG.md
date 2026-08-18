@@ -33,6 +33,13 @@ compatibility contract.
   an action has notes without needing to open edit mode.
 - `NEW_USER_SETUP.md`: a condensed walkthrough for someone else standing up
   their own separate instance, linked from the top of the README.
+- **Due dates** on projects and actions (any depth), set via the edit form.
+  Stored as a plain `YYYY-MM-DD` date rather than a timestamp, to avoid
+  timezone-related off-by-one display bugs. A due-date chip turns
+  rust-colored once it's past due and the item/project is still open.
+  Also fixes stalled-project detection along the way: a project whose root
+  action is done but still has an open sub-action underneath it is no
+  longer considered stalled (previously only checked root-level actions).
 
 ### Fixed
 - Sessions were invalidated by any server restart (container recreate,

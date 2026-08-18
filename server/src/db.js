@@ -55,6 +55,7 @@ function openDatabase({ dataDir, encryptionKey }) {
   const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
   db.exec(schema);
   migrateActionsTable(db);
+  migrateProjectsTable(db);
 
   if (isNewFile) {
     seedDefaultContexts(db);
@@ -65,19 +66,26 @@ function openDatabase({ dataDir, encryptionKey }) {
 
 // CREATE TABLE IF NOT EXISTS (in schema.sql) only helps brand-new databases
 // — it does nothing for a table that already exists but predates a column
-// added later. This runs on every boot, checks what columns actions
-// actually has, and ALTERs in whatever's missing. Safe to run repeatedly:
-// each ALTER is skipped once the column exists. Existing rows just get
-// NULL / the column's default for anything newly added.
+// added later. addColumnIfMissing runs on every boot, checks what columns a
+// table actually has, and ALTERs in whatever's missing. Safe to run
+// repeatedly: each ALTER is skipped once the column exists. Existing rows
+// just get NULL / the column's default for anything newly added.
+function addColumnIfMissing(db, table, column, definition) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+  if (!columns.includes(column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
 function migrateActionsTable(db) {
-  const columns = db.prepare("PRAGMA table_info(actions)").all().map((c) => c.name);
-  if (!columns.includes('parent_action_id')) {
-    db.exec('ALTER TABLE actions ADD COLUMN parent_action_id INTEGER REFERENCES actions(id) ON DELETE CASCADE');
-  }
-  if (!columns.includes('notes')) {
-    db.exec("ALTER TABLE actions ADD COLUMN notes TEXT NOT NULL DEFAULT ''");
-  }
+  addColumnIfMissing(db, 'actions', 'parent_action_id', 'INTEGER REFERENCES actions(id) ON DELETE CASCADE');
+  addColumnIfMissing(db, 'actions', 'notes', "TEXT NOT NULL DEFAULT ''");
+  addColumnIfMissing(db, 'actions', 'due_date', 'TEXT');
   db.exec('CREATE INDEX IF NOT EXISTS idx_actions_parent ON actions(parent_action_id)');
+}
+
+function migrateProjectsTable(db) {
+  addColumnIfMissing(db, 'projects', 'due_date', 'TEXT');
 }
 
 function seedDefaultContexts(db) {

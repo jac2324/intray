@@ -14,7 +14,11 @@ CREATE TABLE IF NOT EXISTS projects (
   outcome      TEXT NOT NULL DEFAULT '',
   status       TEXT NOT NULL DEFAULT 'active', -- active | completed
   created_at   INTEGER NOT NULL,
-  completed_at INTEGER
+  completed_at INTEGER,
+  -- Plain date, no time-of-day: 'YYYY-MM-DD'. Stored as text (not a
+  -- timestamp) specifically to sidestep timezone-shift bugs — a due date
+  -- is a calendar day, not an instant.
+  due_date     TEXT
 );
 
 CREATE TABLE IF NOT EXISTS inbox_items (
@@ -35,7 +39,8 @@ CREATE TABLE IF NOT EXISTS actions (
   -- another action. Arbitrary nesting depth falls out of this for free —
   -- no separate table needed. Deleting a parent deletes its whole subtree.
   parent_action_id INTEGER REFERENCES actions(id) ON DELETE CASCADE,
-  notes            TEXT NOT NULL DEFAULT ''
+  notes            TEXT NOT NULL DEFAULT '',
+  due_date         TEXT -- 'YYYY-MM-DD', same reasoning as projects.due_date above
 );
 
 -- NOTE: the idx_actions_parent index is created in db.js's migration step,

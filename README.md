@@ -335,6 +335,12 @@ A few calls made while building this, in case any surprise you:
   direction. Deleting an action deletes its whole subtree — the UI warns
   first if it has any descendants. Actions also carry an optional free-text
   `notes` field, edited alongside everything else in the same edit form.
+- **Due dates on projects and actions** are set via the edit form only (not
+  at creation) to keep quick-add fast — add one right after capturing
+  something if you want it, via the same pencil/edit control. Stored as a
+  plain `YYYY-MM-DD` date, not a timestamp, specifically to avoid timezone
+  off-by-one bugs; a date chip turns rust-colored once it's past due (and
+  the item/project isn't done yet).
 
 <br>
 

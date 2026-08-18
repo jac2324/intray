@@ -21,6 +21,7 @@ function mapAction(row) {
     completedAt: row.completed_at,
     parentActionId: row.parent_action_id,
     notes: row.notes || '',
+    dueDate: row.due_date || null,
   };
 }
 
@@ -32,6 +33,7 @@ function mapProject(row) {
     status: row.status,
     createdAt: row.created_at,
     completedAt: row.completed_at,
+    dueDate: row.due_date || null,
   };
 }
 

@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { FolderKanban, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, Plus, Pencil } from 'lucide-react';
+import { FolderKanban, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, Plus, Pencil, CalendarDays } from 'lucide-react';
 import AddActionForm from './AddActionForm.jsx';
 import ActionRow from './ActionRow.jsx';
-import { EmptyState } from './Shared.jsx';
+import { EmptyState, fmtDueDate, isOverdue } from './Shared.jsx';
 
 function EditProjectForm({ project, onSave, onCancel }) {
   const [name, setName] = useState(project.name);
   const [outcome, setOutcome] = useState(project.outcome || '');
+  const [dueDate, setDueDate] = useState(project.dueDate || '');
   const save = () => {
     if (!name.trim()) return;
-    onSave({ name: name.trim(), outcome: outcome.trim() });
+    onSave({ name: name.trim(), outcome: outcome.trim(), dueDate: dueDate || null });
   };
   return (
     <div className="clarify-box" onClick={(e) => e.stopPropagation()}>
@@ -17,6 +18,11 @@ function EditProjectForm({ project, onSave, onCancel }) {
       <input className="text-input" style={{ width: '100%', marginBottom: 8 }} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
       <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 6 }}>What does done look like?</div>
       <input className="text-input" style={{ width: '100%', marginBottom: 10 }} value={outcome} onChange={(e) => setOutcome(e.target.value)} placeholder="(optional)" />
+      <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 6 }}>Due date</div>
+      <div className="row" style={{ gap: 8, marginBottom: 10 }}>
+        <input type="date" className="text-input" style={{ flex: 1 }} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+        {dueDate && <button className="btn btn-ghost btn-sm" onClick={() => setDueDate('')}>Clear</button>}
+      </div>
       <div className="clarify-actions">
         <button className="btn btn-primary btn-sm" onClick={save}>Save</button>
         <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
@@ -36,12 +42,20 @@ function ProjectRow({ project, actions, contexts, onCompleteProject, onEditProje
   const projectActions = actions.filter((a) => a.projectId === project.id && a.status === 'next' && a.parentActionId == null);
   const hasAnyOpenAction = actions.some((a) => a.projectId === project.id && a.status === 'next');
   const stalled = !hasAnyOpenAction;
+  const overdue = project.status === 'active' && isOverdue(project.dueDate);
 
   return (
     <div className="card project-card">
       <div className="row" style={{ justifyContent: 'space-between' }} onClick={() => setExpanded((e) => !e)}>
         <div>
-          <div className="project-name">{project.name}</div>
+          <div className="row" style={{ gap: 8 }}>
+            <div className="project-name">{project.name}</div>
+            {project.dueDate && (
+              <span className={`chip due${overdue ? ' overdue' : ''}`}>
+                <CalendarDays size={11} /> {fmtDueDate(project.dueDate)}
+              </span>
+            )}
+          </div>
           {project.outcome && <div className="project-outcome">{project.outcome}</div>}
           {stalled ? (
             <div className="stalled-flag"><AlertTriangle size={12} /> No next action — this project may be stalled</div>

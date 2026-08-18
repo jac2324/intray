@@ -31,6 +31,35 @@ export function fmtDate(ts) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+// Due dates are stored as plain 'YYYY-MM-DD' strings (no time-of-day), so
+// they're parsed as LOCAL dates here rather than handed to `new Date(str)`
+// directly — the Date constructor treats a bare date-only ISO string as UTC
+// midnight, which shifts the displayed day backward by one in any timezone
+// west of UTC. Parsing the parts manually and using the local-time
+// constructor avoids that off-by-one bug entirely.
+function parseLocalDate(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+export function fmtDueDate(dateStr) {
+  if (!dateStr) return '';
+  return parseLocalDate(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function todayStr() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+// Plain string comparison works correctly for 'YYYY-MM-DD' — no date
+// parsing needed, and no timezone concerns since both sides are the same
+// format.
+export function isOverdue(dateStr) {
+  if (!dateStr) return false;
+  return dateStr < todayStr();
+}
+
 export function timeAgo(ts) {
   if (!ts) return 'never';
   const diff = Date.now() - ts;
