@@ -1,16 +1,25 @@
 import React, { useState } from 'react';
-import { ArrowRight, Check, Trash2, Lightbulb, Inbox } from 'lucide-react';
+import { ArrowRight, Check, Trash2, Lightbulb, Inbox, Mic, ChevronDown, ChevronRight } from 'lucide-react';
 import ContextPicker from './ContextPicker.jsx';
-import { EmptyState } from './Shared.jsx';
+import VoicePlayer from './VoicePlayer.jsx';
+import { EmptyState, fmtDate } from './Shared.jsx';
 
 // The GTD clarify flow, one step at a time:
 //   actionable? -> no: trash / someday
 //               -> yes: <2min? -> yes: do it now
 //                               -> no: yours to do? -> delegate -> waiting for
 //                                                    -> keep -> next action
+//
+// Voice notes go through the same flow. Their stored text is just the
+// "Voice note" placeholder, so anything that becomes a real record (action,
+// Someday, Waiting) needs text the user types after listening — `text` starts
+// empty for them. A "Keep this recording" checkbox (off by default) decides
+// whether the audio is archived or deleted when the item is processed.
 function InboxItem({ item, contexts, projects, openActionOptions, onResolve, onAddContext }) {
+  const isVoice = !!item.voiceNoteId || !!item._pendingVoice;
   const [step, setStep] = useState('closed');
-  const [text, setText] = useState(item.text);
+  const [text, setText] = useState(isVoice ? '' : item.text);
+  const [keepRecording, setKeepRecording] = useState(false);
   const [context, setContext] = useState(contexts[0] || '');
   const [projectChoice, setProjectChoice] = useState('');
   const [newProjectName, setNewProjectName] = useState('');
@@ -23,18 +32,27 @@ function InboxItem({ item, contexts, projects, openActionOptions, onResolve, onA
   const resolve = async (resolution) => {
     setBusy(true);
     try {
-      await onResolve(item, resolution);
+      await onResolve(item, isVoice && keepRecording ? { ...resolution, keepRecording: true } : resolution);
     } finally {
       setBusy(false);
     }
   };
 
-  const finishTrash = () => resolve({ type: 'trash' });
-  const finishSomeday = () => resolve({ type: 'someday' });
-  const finishDone = () => resolve({ type: 'done' });
+  // For voice notes, the typed text rides along on every resolution: it's
+  // required for Someday/Waiting/Action, and optional (it just labels a kept
+  // recording) for Trash/Done. Plain text items send nothing extra.
+  const typed = isVoice && text.trim() ? { text: text.trim() } : {};
+  const needsTyped = isVoice && !text.trim();
+
+  const finishTrash = () => resolve({ type: 'trash', ...typed });
+  const finishSomeday = () => {
+    if (needsTyped) return;
+    resolve({ type: 'someday', ...typed });
+  };
+  const finishDone = () => resolve({ type: 'done', ...typed });
   const finishWaiting = () => {
-    if (!who.trim()) return;
-    resolve({ type: 'waiting', who: who.trim() });
+    if (!who.trim() || needsTyped) return;
+    resolve({ type: 'waiting', who: who.trim(), ...typed });
   };
   const finishAction = () => {
     if (!text.trim()) return;
@@ -56,13 +74,32 @@ function InboxItem({ item, contexts, projects, openActionOptions, onResolve, onA
   return (
     <div className="card">
       <div className="row" style={{ justifyContent: 'space-between' }}>
-        <span>{item.text}</span>
+        {isVoice ? (
+          <div className="row row-wrap" style={{ minWidth: 0, gap: 8 }}>
+            <Mic size={15} color="var(--indigo)" aria-hidden="true" />
+            <span>Voice note</span>
+            {item.voiceNoteId ? (
+              <VoicePlayer src={`/api/voice-notes/${item.voiceNoteId}/audio`} durationMs={item.audioDurationMs} />
+            ) : (
+              <span className="chip">waiting to sync</span>
+            )}
+          </div>
+        ) : (
+          <span>{item.text}</span>
+        )}
         {step === 'closed' && (
           <button className="btn btn-sm" onClick={() => setStep('actionable')} disabled={item._optimistic}>
             Process <ArrowRight size={13} />
           </button>
         )}
       </div>
+
+      {isVoice && step !== 'closed' && (
+        <label className="keep-recording">
+          <input type="checkbox" checked={keepRecording} onChange={(e) => setKeepRecording(e.target.checked)} />
+          Keep this recording after I process it
+        </label>
+      )}
 
       {step === 'actionable' && (
         <div className="clarify-box">
@@ -78,8 +115,17 @@ function InboxItem({ item, contexts, projects, openActionOptions, onResolve, onA
       {step === 'notActionable' && (
         <div className="clarify-box">
           <div className="clarify-q">Not actionable — what should happen to it?</div>
+          {isVoice && (
+            <input
+              className="text-input"
+              style={{ width: '100%', marginBottom: 10 }}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="What was it about? (needed for Someday/Maybe)"
+            />
+          )}
           <div className="clarify-actions">
-            <button className="btn btn-sm" disabled={busy} onClick={finishSomeday}><Lightbulb size={13} /> Someday/Maybe</button>
+            <button className="btn btn-sm" disabled={busy || needsTyped} onClick={finishSomeday}><Lightbulb size={13} /> Someday/Maybe</button>
             <button className="btn btn-danger btn-sm" disabled={busy} onClick={finishTrash}><Trash2 size={13} /> Trash it</button>
             <button className="btn btn-ghost btn-sm" onClick={reset}>Back</button>
           </div>
@@ -119,8 +165,17 @@ function InboxItem({ item, contexts, projects, openActionOptions, onResolve, onA
             placeholder="e.g. Sam, the plumber…"
             autoFocus
           />
+          {isVoice && (
+            <input
+              className="text-input"
+              style={{ width: '100%', marginBottom: 10 }}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="What are you waiting for?"
+            />
+          )}
           <div className="clarify-actions">
-            <button className="btn btn-primary btn-sm" disabled={busy || !who.trim()} onClick={finishWaiting}>Add to Waiting For</button>
+            <button className="btn btn-primary btn-sm" disabled={busy || !who.trim() || needsTyped} onClick={finishWaiting}>Add to Waiting For</button>
             <button className="btn btn-ghost btn-sm" onClick={reset}>Back</button>
           </div>
         </div>
@@ -129,7 +184,13 @@ function InboxItem({ item, contexts, projects, openActionOptions, onResolve, onA
       {step === 'nextAction' && (
         <div className="clarify-box">
           <div className="clarify-q">Set the next action</div>
-          <input className="text-input" style={{ width: '100%', marginBottom: 10 }} value={text} onChange={(e) => setText(e.target.value)} />
+          <input
+            className="text-input"
+            style={{ width: '100%', marginBottom: 10 }}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={isVoice ? 'Type the next action…' : undefined}
+          />
           <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 6 }}>Context</div>
           <ContextPicker contexts={contexts} value={context} onChange={setContext} onAddContext={onAddContext} />
           {openActionOptions.length > 0 && (
@@ -171,27 +232,69 @@ function InboxItem({ item, contexts, projects, openActionOptions, onResolve, onA
   );
 }
 
-export default function InboxView({ inbox, contexts, projects, openActionOptions, onResolve, onAddContext }) {
-  if (inbox.length === 0) {
-    return (
-      <EmptyState icon={Inbox} title="Inbox zero">
-        Nothing waiting to be processed. Capture something above whenever it crosses your mind.
-      </EmptyState>
-    );
-  }
+// Recordings kept via "Keep this recording". Lives at the bottom of the Inbox
+// view (not its own tab), and — like "Recently completed" on Next Actions —
+// always renders its toggle with a live count, so it stays discoverable even
+// when empty.
+function SavedRecordings({ recordings, onDelete }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ marginTop: 20 }}>
+      <button className="btn btn-ghost btn-sm" onClick={() => setOpen((o) => !o)}>
+        {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />} Saved recordings ({recordings.length})
+      </button>
+      {open &&
+        (recordings.length === 0 ? (
+          <div style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 8, padding: '4px 2px' }}>
+            Nothing saved yet — tick “Keep this recording” while processing a voice note and it will be kept here.
+          </div>
+        ) : (
+          recordings.map((r) => (
+            <div key={r.id} className="card row" style={{ justifyContent: 'space-between', marginTop: 8 }}>
+              <div style={{ minWidth: 0 }}>
+                <div>{r.keptLabel}</div>
+                <div className="row" style={{ gap: 10, marginTop: 4 }}>
+                  <VoicePlayer src={`/api/voice-notes/${r.id}/audio`} durationMs={r.durationMs} />
+                  <span style={{ fontSize: 11, color: 'var(--ink-faint)' }}>Recorded {fmtDate(r.createdAt)}</span>
+                </div>
+              </div>
+              <button
+                className="btn btn-ghost btn-sm btn-icon"
+                aria-label="Delete recording"
+                onClick={() => {
+                  if (window.confirm('Delete this recording? This can’t be undone.')) onDelete(r.id);
+                }}
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+          ))
+        ))}
+    </div>
+  );
+}
+
+export default function InboxView({ inbox, savedRecordings, contexts, projects, openActionOptions, onResolve, onAddContext, onDeleteRecording }) {
   return (
     <div>
-      {inbox.map((item) => (
-        <InboxItem
-          key={item.id}
-          item={item}
-          contexts={contexts}
-          projects={projects}
-          openActionOptions={openActionOptions}
-          onResolve={onResolve}
-          onAddContext={onAddContext}
-        />
-      ))}
+      {inbox.length === 0 ? (
+        <EmptyState icon={Inbox} title="Inbox zero">
+          Nothing waiting to be processed. Capture something above whenever it crosses your mind.
+        </EmptyState>
+      ) : (
+        inbox.map((item) => (
+          <InboxItem
+            key={item.id}
+            item={item}
+            contexts={contexts}
+            projects={projects}
+            openActionOptions={openActionOptions}
+            onResolve={onResolve}
+            onAddContext={onAddContext}
+          />
+        ))
+      )}
+      <SavedRecordings recordings={savedRecordings || []} onDelete={onDeleteRecording} />
     </div>
   );
 }

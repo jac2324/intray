@@ -75,6 +75,13 @@ home too — or want to expose it to the internet — see the main
 (a personal VPN like Tailscale, recommended; or a reverse proxy with HTTPS
 as a fallback).
 
+**Voice notes:** the mic button next to Capture only works over `https://`
+(browsers block the microphone on plain `http://`, except on `localhost`).
+Everything else in the app works fine without it. If you're using Tailscale,
+turn on MagicDNS + HTTPS Certificates in its admin console and run
+`sudo tailscale serve --bg 3000` on the server to get an `https://` address —
+details in the README's [Voice notes](README.md#voice-notes) section.
+
 The README also covers backing up your database, what happens if you lose
 `DB_ENCRYPTION_KEY` (short version: the data is gone, by design — there's
 no recovery), and plain-Node setup if you'd rather not use Docker.

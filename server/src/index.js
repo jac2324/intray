@@ -51,6 +51,7 @@ app.use('/api/auth', createAuthRouter(AUTH_PASSWORD));
 
 app.use('/api/state', require('./routes/stateRoute')(db));
 app.use('/api/inbox', require('./routes/inbox')(db));
+app.use('/api/voice-notes', require('./routes/voiceNotes')(db));
 app.use('/api/actions', require('./routes/actions')(db));
 app.use('/api/projects', require('./routes/projects')(db));
 app.use('/api/waiting', require('./routes/waiting')(db));
@@ -68,6 +69,14 @@ app.get('*', (req, res, next) => {
 
 // Basic JSON error handler for anything that throws in a route.
 app.use((err, req, res, next) => {
+  // Client errors raised by middleware (e.g. body-parser's 413 for an
+  // oversized voice note, or 400 for malformed JSON) keep their status. The
+  // client retries queued voice notes on 5xx, so reporting these as 500
+  // would make it retry a rejected upload forever.
+  const status = err.status || err.statusCode;
+  if (status >= 400 && status < 500) {
+    return res.status(status).json({ error: err.type || 'bad_request' });
+  }
   console.error(err);
   res.status(500).json({ error: 'internal_error' });
 });

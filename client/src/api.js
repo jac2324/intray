@@ -46,6 +46,23 @@ export const api = {
   processInboxItem: (id, resolution) =>
     request(`/inbox/${id}/process`, { method: 'POST', body: json({ resolution }) }),
 
+  // --- voice notes ---
+  // The body is the raw audio. The headers passed here replace request()'s
+  // default JSON header, so Content-Type is the recording's own mime type.
+  // X-Client-Id lets the server recognise a retry of an upload that already
+  // landed, instead of creating a duplicate inbox item.
+  uploadVoiceNote: ({ blob, mime, durationMs, clientId }) =>
+    request('/inbox/audio', {
+      method: 'POST',
+      body: blob,
+      headers: {
+        'Content-Type': blob.type || mime,
+        'X-Duration-Ms': String(Math.round(durationMs || 0)),
+        'X-Client-Id': clientId,
+      },
+    }),
+  deleteSavedRecording: (id) => request(`/voice-notes/${id}`, { method: 'DELETE' }),
+
   // --- actions (next actions) ---
   addAction: ({ text, context, projectId, parentActionId, notes }) =>
     request('/actions', { method: 'POST', body: json({ text, context, projectId, parentActionId, notes }) }),

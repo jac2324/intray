@@ -119,6 +119,78 @@ body {
 .capture-btn-label { display: none; }
 @media (min-width: 480px) { .capture-btn-label { display: inline; } }
 
+/* Voice notes: mic button in the capture bar, recording state, the small
+   status line under the bar, and the inbox player/keep controls. None of
+   these touch the tab-bar rules below. */
+.capture-mic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper);
+  color: var(--indigo);
+  border: 1px solid var(--line);
+  min-height: 44px;
+  min-width: 44px;
+  border-radius: 7px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.capture-mic:hover { background: var(--indigo-soft); }
+.capture-mic:active { transform: scale(0.96); }
+.capture-mic.recording { background: var(--rust); border-color: var(--rust); color: #fff; }
+.capture-mic.recording:hover { background: #a24b32; }
+.capture-recording {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 16px;
+  color: var(--rust);
+  font-weight: 600;
+}
+.rec-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--rust);
+  flex-shrink: 0;
+  animation: rec-pulse 1.1s ease-in-out infinite;
+}
+@keyframes rec-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+.rec-hint { color: var(--ink-faint); font-weight: 400; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.capture-notice { font-size: 12px; color: var(--rust); padding: 6px 4px 0; }
+.capture-notice.sync { color: var(--ink-soft); }
+
+.voice-player { display: inline-flex; align-items: center; gap: 6px; }
+.voice-play-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--paper-raised);
+  color: var(--indigo);
+  cursor: pointer;
+  padding: 0;
+}
+.voice-play-btn:hover { background: var(--indigo-soft); }
+.voice-time { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); }
+.keep-recording {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  min-height: 32px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.keep-recording input { width: 18px; height: 18px; accent-color: var(--indigo); cursor: pointer; }
+
 /* Tab nav: fixed bottom bar on phone widths, normal top row from tablet up.
    IMPORTANT: the base (always-on) rules below must come BEFORE the
    responsive @media overrides further down. CSS resolves ties between
@@ -397,6 +469,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 .center-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .tab-badge.pulse, .spin { animation: none !important; }
-  .btn, .capture-btn, .checkbox-btn, .tab-btn { transition: none !important; }
+  .tab-badge.pulse, .spin, .rec-dot { animation: none !important; }
+  .btn, .capture-btn, .capture-mic, .checkbox-btn, .tab-btn { transition: none !important; }
 }

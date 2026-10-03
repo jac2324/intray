@@ -1,8 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../api';
+import { enqueue, listPending, removePending, newClientId } from '../utils/voiceQueue.js';
 
 let tempIdCounter = 0;
 const nextTempId = () => `temp-${Date.now()}-${tempIdCounter++}`;
+
+// How often to retry queued voice notes while any are waiting. The other
+// retry triggers (app load, coming back online, tab/app becoming visible)
+// cover the common cases; this just catches "connection came back while the
+// app stayed open and the browser never fired an event".
+const VOICE_RETRY_MS = 20000;
+
+const pendingMeta = (rec) => ({ clientId: rec.clientId, durationMs: rec.durationMs, createdAt: rec.createdAt });
 
 // Central data hook. Holds the full GTD state bundle and exposes one
 // function per mutation. Every mutation (except the optimistic capture bar)
@@ -89,6 +98,97 @@ export function useGtdData() {
     [flashError]
   );
 
+  // --- voice notes ---------------------------------------------------------
+  // Recordings go to an on-device queue first and are uploaded from there, so
+  // a dropped connection can't lose one. `pendingVoice` is what's still
+  // waiting; App shows those in the Inbox as "waiting to sync".
+  const [pendingVoice, setPendingVoice] = useState([]);
+  const flushing = useRef(false);
+  const flushAgain = useRef(false);
+
+  const dropPending = useCallback((clientId) => {
+    setPendingVoice((p) => p.filter((x) => x.clientId !== clientId));
+  }, []);
+
+  const flushVoice = useCallback(async () => {
+    // One flush at a time, so a retry timer can never upload the same
+    // recording twice concurrently. A recording enqueued mid-flush sets
+    // flushAgain and gets picked up by another pass below.
+    if (flushing.current) {
+      flushAgain.current = true;
+      return;
+    }
+    flushing.current = true;
+    try {
+      do {
+        flushAgain.current = false;
+        const queued = await listPending();
+        setPendingVoice(queued.map(pendingMeta));
+        for (const rec of queued) {
+          try {
+            const result = await api.uploadVoiceNote(rec);
+            await removePending(rec.clientId);
+            // New state first, then drop the "waiting to sync" placeholder,
+            // so the note never blinks out of the Inbox between the two.
+            if (result && result.state) setData(result.state);
+            dropPending(rec.clientId);
+          } catch (e) {
+            if (e.status === 401) {
+              // Logged out: keep everything queued; it uploads after sign-in.
+              setAuthed(false);
+              return;
+            }
+            if (e.status >= 400 && e.status < 500) {
+              // The server rejected this one for good (e.g. too large) —
+              // retrying can't help, and it would block the ones behind it.
+              await removePending(rec.clientId);
+              dropPending(rec.clientId);
+              flashError(`A voice note couldn't be saved (${e.message}).`);
+              continue;
+            }
+            // Network down or server error: stop and retry later, keeping order.
+            break;
+          }
+        }
+      } while (flushAgain.current);
+    } finally {
+      flushing.current = false;
+    }
+  }, [dropPending, flashError]);
+
+  const recordVoiceNote = useCallback(
+    async (blob, durationMs) => {
+      const record = { clientId: newClientId(), blob, mime: blob.type, durationMs, createdAt: Date.now() };
+      await enqueue(record);
+      setPendingVoice((p) => [...p, pendingMeta(record)]);
+      flushVoice();
+    },
+    [flushVoice]
+  );
+
+  const loaded = !!data;
+  useEffect(() => {
+    if (!authed || !loaded) return undefined;
+    flushVoice();
+    const onOnline = () => flushVoice();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') flushVoice();
+    };
+    window.addEventListener('online', onOnline);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [authed, loaded, flushVoice]);
+
+  const hasPendingVoice = pendingVoice.length > 0;
+  useEffect(() => {
+    if (!authed || !loaded || !hasPendingVoice) return undefined;
+    const t = setInterval(flushVoice, VOICE_RETRY_MS);
+    return () => clearInterval(t);
+  }, [authed, loaded, hasPendingVoice, flushVoice]);
+
   const login = useCallback(async (password) => {
     await api.login(password);
     setAuthed(true);
@@ -112,6 +212,9 @@ export function useGtdData() {
     reload: load,
 
     capture,
+    recordVoiceNote,
+    pendingVoice,
+    deleteSavedRecording: (id) => mutate(() => api.deleteSavedRecording(id)),
     deleteInboxItem: (id) => mutate(() => api.deleteInboxItem(id)),
     processInboxItem: (id, resolution) => mutate(() => api.processInboxItem(id, resolution)),
 

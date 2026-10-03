@@ -27,6 +27,13 @@ export default function App() {
     pulseTimer.current = setTimeout(() => setPulse(false), 500);
   };
 
+  const handleVoiceNote = (blob, durationMs) => {
+    gtd.recordVoiceNote(blob, durationMs);
+    setPulse(true);
+    if (pulseTimer.current) clearTimeout(pulseTimer.current);
+    pulseTimer.current = setTimeout(() => setPulse(false), 500);
+  };
+
   useEffect(() => () => pulseTimer.current && clearTimeout(pulseTimer.current), []);
 
   if (gtd.loading) return <LoadingScreen />;
@@ -34,7 +41,21 @@ export default function App() {
   if (!gtd.data) return <LoadingScreen />;
 
   const { data } = gtd;
-  const inboxCount = data.inbox.length;
+
+  // Voice notes recorded but not yet confirmed by the server show up in the
+  // Inbox right away as "waiting to sync" placeholders, so nothing you record
+  // ever looks like it vanished — even with no connection.
+  const pendingVoiceItems = gtd.pendingVoice.map((p) => ({
+    id: `pending-${p.clientId}`,
+    text: 'Voice note',
+    createdAt: p.createdAt,
+    voiceNoteId: null,
+    audioDurationMs: p.durationMs,
+    _optimistic: true,
+    _pendingVoice: true,
+  }));
+  const inbox = [...data.inbox, ...pendingVoiceItems];
+  const inboxCount = inbox.length;
   const nextCount = data.actions.filter((a) => a.status === 'next').length;
   const activeProjects = data.projects.filter((p) => p.status === 'active');
   const stalledCount = activeProjects.filter((p) => !data.actions.some((a) => a.projectId === p.id && a.status === 'next')).length;
@@ -75,18 +96,20 @@ export default function App() {
         </div>
       </header>
 
-      <CaptureBar onCapture={handleCapture} />
+      <CaptureBar onCapture={handleCapture} onVoiceNote={handleVoiceNote} pendingVoiceCount={gtd.pendingVoice.length} />
       <TabNav activeTab={activeTab} setActiveTab={setActiveTab} counts={counts} pulse={pulse} reviewDue={reviewDue} />
 
       <main className="gtd-main">
         {activeTab === 'inbox' && (
           <InboxView
-            inbox={data.inbox}
+            inbox={inbox}
+            savedRecordings={data.savedRecordings}
             contexts={data.contexts}
             projects={data.projects}
             openActionOptions={openActionOptions}
             onResolve={(item, resolution) => gtd.processInboxItem(item.id, resolution)}
             onAddContext={gtd.addContext}
+            onDeleteRecording={gtd.deleteSavedRecording}
           />
         )}
         {activeTab === 'next' && (

@@ -41,7 +41,24 @@ compatibility contract.
   action is done but still has an open sub-action underneath it is no
   longer considered stalled (previously only checked root-level actions).
 
+- **Voice notes**: a mic button on the capture bar records a short audio
+  note (tap to start, tap to stop, auto-stops at 2 minutes) into the Inbox,
+  with a play button and its length. Processing one works like any inbox
+  item, except you type what it means (it isn't transcribed — nothing leaves
+  your server). A **"Keep this recording"** checkbox, off by default, decides
+  whether the audio is deleted or archived; archived recordings live in a
+  collapsible **Saved recordings** section at the bottom of the Inbox view,
+  labeled with what each became. Recordings are stored in the encrypted
+  database. Recording is queued on the device first and uploaded from there,
+  so a note made with no connection shows as "waiting to sync" and uploads
+  on its own later (surviving app restarts), with an idempotency key so a
+  retried upload can't create a duplicate. Requires HTTPS for microphone
+  access — see "Voice notes" in the README for the Tailscale Serve setup.
+
 ### Fixed
+- The server's error handler reported every middleware error as a 500,
+  including client errors like an oversized request body (413). It now keeps
+  the original 4xx status.
 - Sessions were invalidated by any server restart (container recreate,
   redeploy, host reboot) because the signing secret was regenerated in
   memory each boot. It's now persisted to `data/.session-secret` and

@@ -26,6 +26,7 @@ built React frontend, backed by a single encrypted SQLite file.
 - [Password protection (`AUTH_PASSWORD`)](#password-protection-auth_password)
 - [Reaching Intray from your phone](#reaching-intray-from-your-phone)
 - [Installing as a PWA (home screen app)](#installing-as-a-pwa-home-screen-app)
+- [Voice notes](#voice-notes)
 - [Environment variables](#environment-variables)
 - [Project structure](#project-structure)
 - [Design decisions worth knowing about](#design-decisions-worth-knowing-about)
@@ -213,7 +214,9 @@ address (e.g. `http://intray-server.your-tailnet.ts.net:3000` or a
 public internet, and no `AUTH_PASSWORD` or reverse proxy required, because
 the VPN itself is already restricting who can even reach the server. This is
 the simplest and safest option for a single person and is the default
-recommendation here.
+recommendation here. (Want to record [voice notes](#voice-notes) from your
+phone? That needs an `https://` address — Tailscale Serve provides one with a
+couple of minutes of setup; see that section.)
 
 ### Option 2 (fallback): expose it directly to the internet
 
@@ -250,6 +253,63 @@ the icon and name from `client/public/manifest.json`.
 Tailscale hostname, you change ports, you switch networks — the installed
 home-screen icon still points at the old address. Remove it and redo "Add
 to Home Screen" against the new address.
+
+<br>
+
+## Voice notes
+
+The mic button next to **Capture** records a short voice note (tap to start,
+tap to stop; it auto-stops at 2 minutes) and drops it in the Inbox with a
+play button. Listen, then process it like anything else — you type what it
+means, since the audio itself isn't transcribed. Nothing leaves your server:
+there's no speech-to-text service involved.
+
+**Keep or delete:** when you process a voice note there's a **"Keep this
+recording"** checkbox, off by default. Left off, the recording is deleted
+once you've turned it into an action, Someday item, etc. Ticked, it's kept
+under **Saved recordings** at the bottom of the Inbox view (labeled with what
+it became, e.g. "Next action: Call the plumber"), where you can replay or
+delete it later.
+
+**It can't lose a note.** A recording is saved on the phone *first* and
+uploaded from there. If you record with no connection (say the VPN dropped),
+the note shows in your Inbox as "waiting to sync" and uploads on its own once
+the server is reachable again — when the app is next opened, when the phone
+comes back online, or within ~20 seconds if the app stays open. It's also
+safe against the response getting lost mid-upload: each recording carries an
+ID, so a retry can never create a duplicate.
+
+### Voice notes need HTTPS
+
+Browsers only allow microphone access on `https://` pages (or `localhost`).
+Over plain `http://` — which is how Intray is reached by default — the mic
+button explains this instead of recording. Everything else works fine over
+`http://`. If you're using Tailscale (see above), the easiest way to get
+HTTPS is **Tailscale Serve**, which puts a real certificate in front of the
+app with no extra software:
+
+1. In the [Tailscale admin console](https://login.tailscale.com/admin/dns),
+   under **DNS**, turn on **MagicDNS** and **HTTPS Certificates**.
+2. On the machine running Intray:
+
+   ```bash
+   sudo tailscale serve --bg 3000
+   ```
+
+   (Use your `PORT` if you changed it.) It prints the new address, something
+   like `https://intray-pi.your-tailnet.ts.net`.
+3. Open that address on your phone and redo "Add to Home Screen" (the old
+   shortcut points at the `http://` address). As a bonus, over HTTPS the
+   home-screen icon is a proper installed app and the service worker
+   (instant repeat loads) starts working too.
+
+This stays private to your tailnet — `serve` is not `funnel`, so it isn't
+exposed to the public internet.
+
+**Storage:** recordings live inside the same encrypted database file as the
+rest of your data (so they're encrypted at rest and covered by the same
+backup). Expect on the order of 1 MB per minute of audio; the server rejects
+anything over 10 MB.
 
 <br>
 
@@ -341,6 +401,19 @@ A few calls made while building this, in case any surprise you:
   plain `YYYY-MM-DD` date, not a timestamp, specifically to avoid timezone
   off-by-one bugs; a date chip turns rust-colored once it's past due (and
   the item/project isn't done yet).
+- **Voice notes are audio-only, stored in the encrypted database.** They're
+  `BLOB`s in a `voice_notes` table rather than loose files on disk, so they
+  get encryption at rest and the single-file backup for free. The row is
+  deliberately *not* cascade-deleted with its inbox item (a kept recording
+  must outlive it), so every path that removes an inbox item deletes or
+  archives the audio explicitly, and a boot-time cleanup removes anything
+  that is neither attached to an inbox item nor archived. Transcription is
+  intentionally left out for now: a Raspberry Pi 4 with 2 GB of RAM is slow
+  at speech-to-text, and cloud transcription would send your audio to a
+  third party, which cuts against the self-hosted point of the app. The
+  upload queue lives in the page (IndexedDB), not the service worker, since
+  Background Sync isn't available on iOS and the service worker deliberately
+  never touches `/api/*`.
 
 <br>
 

@@ -62,6 +62,34 @@ CREATE TABLE IF NOT EXISTS someday_items (
   created_at INTEGER NOT NULL
 );
 
+-- Voice notes: short audio captures, stored as BLOBs inside this same
+-- (encrypted) database file so they're encrypted at rest and covered by the
+-- same single-file backup as everything else.
+--
+-- Invariant: every row is either attached to a live inbox item, or archived
+-- (archived = 1, kept deliberately via the "Keep this recording" checkbox).
+-- inbox_item_id is SET NULL (not CASCADE) when the inbox item is clarified
+-- so a kept recording survives; the routes delete the row explicitly in
+-- every other case, and boot-time cleanup in routes/voiceNotes.js removes
+-- any row that somehow violates the invariant.
+--
+-- client_id is an idempotency key generated on the phone for each
+-- recording: if an upload succeeds but the response is lost, the retry
+-- finds the existing row instead of creating a duplicate inbox item.
+CREATE TABLE IF NOT EXISTS voice_notes (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  inbox_item_id INTEGER REFERENCES inbox_items(id) ON DELETE SET NULL,
+  client_id     TEXT UNIQUE,
+  mime          TEXT NOT NULL,
+  duration_ms   INTEGER,
+  data          BLOB NOT NULL,
+  created_at    INTEGER NOT NULL,
+  archived      INTEGER NOT NULL DEFAULT 0,
+  kept_label    TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_voice_notes_inbox ON voice_notes(inbox_item_id);
+
 -- Single-row table holding weekly review state.
 CREATE TABLE IF NOT EXISTS review_state (
   id          INTEGER PRIMARY KEY CHECK (id = 1),
